@@ -69,7 +69,7 @@ async def get_all_frases(message: types.Message):
         await message.answer("Фраз нет!", reply_markup=main_keyboard())
         return
     i = 0
-    while(i <= count):
+    while(i <= count-1):
         text = ""
         for j in range(3):
             if i+j >= count:
@@ -90,11 +90,11 @@ async def process_get_frase_eng(message: types.Message, state: FSMContext):
     if count==0:
         await message.answer("Фраз нет!", reply_markup=main_keyboard())
         return
-    number = random.randint(1,count[0][0])
-    frase = db_frases.execute_read_query(connection,db_frases.output_frase(number))
+    number = random.randint(0,count[0][0]-1)
+    frase = db_frases.execute_read_query(connection,db_frases.get_all_frases())[number]
 
-    await message.answer("Вот фраза:\n" + str(frase[0][0]), reply_markup=cancel_keyboard())
-    rus_frase = str(frase[0][1]).lower()
+    await message.answer("Вот фраза:\n" + str(frase[1]), reply_markup=cancel_keyboard())
+    rus_frase = str(frase[2]).lower()
     await state.update_data(rus_frase=rus_frase)
     await message.answer("\n\nТеперь введи ее на русском")
     await StateFrases.wait_rus_answer.set()
@@ -115,11 +115,11 @@ async def process_get_frase_rus(message: types.Message, state: FSMContext):
     if count==0:
         await message.answer("Фраз нет!", reply_markup=main_keyboard())
         return
-    number = random.randint(1,count[0][0])
-    frase = db_frases.execute_read_query(connection,db_frases.output_frase(number))
+    number = random.randint(0,count[0][0]-1)
+    frase = db_frases.execute_read_query(connection,db_frases.get_all_frases())[number]
 
-    await message.answer("Вот фраза:\n" + str(frase[0][1]), reply_markup=cancel_keyboard())
-    eng_frase = str(frase[0][0]).lower()
+    await message.answer("Вот фраза:\n" + str(frase[2]), reply_markup=cancel_keyboard())
+    eng_frase = str(frase[1]).lower()
     await state.update_data(eng_frase=eng_frase)
 
     await message.answer("\n\nТеперь введи ее на английском")
@@ -173,14 +173,15 @@ async def press_cancel(message: types.Message, state: FSMContext):
   
 async def delete_values(message: types.Message, state: FSMContext):
     await get_all_frases(message)
-    await message.answer("укажите номера фраз, которые хотите изменить", reply_markup=cancel_keyboard())
+    await message.answer("укажите номера фраз, которые хотите удалить(через пробел)", reply_markup=cancel_keyboard())
     await StateFrases.delete_frases.set()
 
 async def confirm_delete(message: types.Message, state: FSMContext):
     lis = message.text.split()
     for i in lis:
         db_frases.execute_query(connection, db_frases.delete_value(int(i)))
-
+    await message.answer("Фразы успешно удалены!", reply_markup=cancel_keyboard())
+    await StateFrases.take_frase.set()
 
 
 def inline_register_handlers_booking(dp: Dispatcher):

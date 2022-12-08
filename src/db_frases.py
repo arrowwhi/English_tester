@@ -76,6 +76,12 @@ INSERT INTO frases (eng_frase, rus_frase)
 VALUES ('""" + eng_frase + "', '" + rus_frase + "');"
     return add_card
 
+def get_all_nums():
+    q = """
+SELECT frase_id FROM frases;
+    """
+    return q
+
 
 # id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 # eng_frase TEXT NOT NULL,
