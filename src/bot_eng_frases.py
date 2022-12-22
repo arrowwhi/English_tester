@@ -61,6 +61,14 @@ def confirm_keyboard():
     kb.add(b0,b1)
     return kb
 
+def ans_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    b1 = KeyboardButton("Отменить")
+    b2 = KeyboardButton("Узнать ответ")
+    kb.add(b1)
+    kb.add(b2)
+    return kb
+
 async def get_all_frases(message: types.Message):
     pass
     frases = db_frases.execute_read_query(connection,db_frases.get_all_frases())
@@ -93,7 +101,7 @@ async def process_get_frase_eng(message: types.Message, state: FSMContext):
     number = random.randint(0,count[0][0]-1)
     frase = db_frases.execute_read_query(connection,db_frases.get_all_frases())[number]
 
-    await message.answer("Вот фраза:\n" + str(frase[1]), reply_markup=cancel_keyboard())
+    await message.answer("Вот фраза:\n" + str(frase[1]), reply_markup=ans_keyboard())
     rus_frase = str(frase[2]).lower()
     await state.update_data(rus_frase=rus_frase)
     await message.answer("\n\nТеперь введи ее на русском")
@@ -108,7 +116,18 @@ async def confirm_rus_frase(message: types.Message, state: FSMContext):
         await StateFrases.take_frase.set()
         await message.answer("Выбери кнопку на клавиатуре", reply_markup=main_keyboard())
     else:
-        await message.answer("Неправильно! Попробуй еще", reply_markup=cancel_keyboard())
+        await message.answer("Неправильно! Попробуй еще", reply_markup=ans_keyboard())
+
+async def show_rus_frase(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    await message.answer("Правильный ответ:\n" + user_data["rus_frase"] , reply_markup=main_keyboard())
+    await StateFrases.take_frase.set()
+
+async def show_eng_frase(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    await message.answer("Правильный ответ:\n" + user_data["eng_frase"] , reply_markup=main_keyboard())
+    await StateFrases.take_frase.set()
+
 
 async def process_get_frase_rus(message: types.Message, state: FSMContext):
     count = db_frases.execute_read_query(connection,db_frases.rows_rows())
@@ -118,7 +137,7 @@ async def process_get_frase_rus(message: types.Message, state: FSMContext):
     number = random.randint(0,count[0][0]-1)
     frase = db_frases.execute_read_query(connection,db_frases.get_all_frases())[number]
 
-    await message.answer("Вот фраза:\n" + str(frase[2]), reply_markup=cancel_keyboard())
+    await message.answer("Вот фраза:\n" + str(frase[2]), reply_markup=ans_keyboard())
     eng_frase = str(frase[1]).lower()
     await state.update_data(eng_frase=eng_frase)
 
@@ -134,7 +153,7 @@ async def confirm_eng_frase(message: types.Message, state: FSMContext):
         await StateFrases.take_frase.set()
         await message.answer("Выбери кнопку на клавиатуре", reply_markup=main_keyboard())
     else:
-        await message.answer("Неправильно! Попробуй еще", reply_markup=cancel_keyboard())
+        await message.answer("Неправильно! Попробуй еще", reply_markup=ans_keyboard())
 
 
 async def take_frase(message: types.Message, state: FSMContext):
@@ -180,7 +199,7 @@ async def confirm_delete(message: types.Message, state: FSMContext):
     lis = message.text.split()
     for i in lis:
         db_frases.execute_query(connection, db_frases.delete_value(int(i)))
-    await message.answer("Фразы успешно удалены!", reply_markup=cancel_keyboard())
+    await message.answer("Фразы успешно удалены!", reply_markup=main_keyboard())
     await StateFrases.take_frase.set()
 
 
@@ -198,9 +217,13 @@ def inline_register_handlers_booking(dp: Dispatcher):
     dp.register_message_handler(
         process_get_frase_eng, state=StateFrases.take_frase, text="Получить фразу на английском")
     dp.register_message_handler(
+        show_rus_frase, state=StateFrases.wait_rus_answer, text="Узнать ответ")
+    dp.register_message_handler(
         confirm_rus_frase, state=StateFrases.wait_rus_answer)
     dp.register_message_handler(
         process_get_frase_rus, state=StateFrases.take_frase, text="Получить фразу на русском")
+    dp.register_message_handler(
+        show_eng_frase, state=StateFrases.wait_eng_answer, text="Узнать ответ")
     dp.register_message_handler(
         confirm_eng_frase, state=StateFrases.wait_eng_answer)
     dp.register_message_handler(
@@ -219,3 +242,5 @@ inline_register_handlers_booking(dp)
 if __name__ == '__main__':
     db_frases.execute_query(connection, db_frases.create_table())
     executor.start_polling(dp)
+    a = input()
+    print(a)
